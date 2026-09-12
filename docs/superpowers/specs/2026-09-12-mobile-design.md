@@ -1,0 +1,108 @@
+# Mobile play
+
+Approved in conversation: Orbital becomes playable on phones in landscape. Four pieces —
+an orientation gate, a zoomed follow camera, a touch input layer, and a compressed HUD.
+Simulation is untouched: `physics.js`, `projectiles.js`, `asteroids.js` and `scoring.js` are
+not modified, and the six existing test files serve as the regression check.
+
+## Mobile mode
+
+Touch mode engages when `(pointer: coarse)` and `(hover: none)` both match. Viewport width is
+deliberately not part of the test: a tablet in landscape is wider than many laptop windows, and
+gating on width would strand tablets in desktop mode with no controls at all. A `?touch=1` query
+parameter forces it on for desktop testing; `?touch=0` forces it off.
+Desktop behaviour is unchanged in every respect. Keyboard listeners stay registered in touch
+mode so an attached keyboard still works.
+
+## Orientation
+
+Portrait is blocked. `matchMedia('(orientation: portrait)')` drives a full-screen rotate card
+that calls the existing `pause()`, so simulation time and physics are held while the card is
+up. Rotating to landscape hides the card and returns the player to the standard paused
+overlay; the player resumes deliberately rather than being dropped back into flight.
+
+The Start button additionally calls `requestLandscape()`, which requests fullscreen on the
+document element and then `screen.orientation.lock('landscape')`. Both may reject or be
+absent; both are wrapped so failure is silent and changes nothing. Android locks and never
+shows the card again. iOS Safari implements neither API, so on iOS the rotate card is the
+entire mechanism, not a fallback.
+
+## Camera
+
+`src/camera.js` is new and pure — no Three.js, no DOM, no module state:
+
+    frame({shipX, shipY, width, height, zoom, hudPx, bound}) -> {halfW, halfH, cx, cy}
+
+`halfH = 1020 / Math.min(1, width / height) / zoom`, `halfW = halfH * width / height`. The
+leading `Math.min` preserves today's behaviour of widening the view when a desktop window is
+taller than it is wide, and is inert in landscape. The camera centre follows the ship, shifted
+left by half the HUD width converted to world units (`hudPx * halfH / height`) so the ship sits
+centred in the area right of the panel. The centre is then clamped per axis to
+`±(bound - half)`; when `half >= bound` that axis locks to `0`.
+
+`bound` is `LIMIT + 60`. `zoom` is `2.2` in touch mode and `1` on desktop, where the function
+reproduces today's framing in [view.js](../../../src/view.js). At 2.2 on a 844x390 viewport the
+ship renders about 11px, `halfW` is 1002 against a bound of 960, so horizontal panning does not
+engage on a phone and the perimeter ring stays framed on both sides; only vertical follow is
+active. Narrower aspects such as a 4:3 tablet pan on both axes and the clamp handles it.
+
+`view.js` keeps a symmetric frustum and moves `camera.position`. `draw()` gains an `elapsed`
+argument and lerps the camera toward its target by `1 - Math.exp(-elapsed / 0.12)` so smoothing
+does not vary with frame rate. `resize()` and `draw()` both route through `frame()`; the current
+`extent = 1020/Math.min(1,aspect)` expression moves into it.
+
+## Touch controls
+
+`src/touch.js` wires a `<div id="touch">` overlay carrying `touch-action: none`, present only
+in touch mode. Pointer events are used throughout, with one tracked `pointerId` per control so
+two thumbs work simultaneously. Buttons act on `pointerdown`, never on a synthesized click,
+because click latency is felt on the fire button.
+
+Left zone: a floating heading stick whose origin is wherever the thumb lands. `stickVector()`
+converts pointer position to a direction and a deflection clamped to `[0, 1]`; deflection under
+`0.25` is treated as centred and produces no steering.
+
+Right zone: THRUST and FIRE, stacked for one thumb, both hold-to-activate, setting `input.up`
+and `input.shoot`. `input.up` doubles as liftoff exactly as the keyboard does.
+
+Steering resolves in the frame loop rather than in the event handler, because it needs the
+current `ship.angle`:
+
+    steerToward(current, target, deadzone) -> {left, right}
+
+The difference is wrapped into `±PI`; a difference above `deadzone` sets `left`, below
+`-deadzone` sets `right`, otherwise neither. That sign convention matches
+`p.angle += (left - right) * TURN * dt` in `physics.js`, so the ship turns at its own rate
+toward the aimed heading and snap-aiming remains impossible. Both helpers are exported for
+direct unit testing.
+
+Held inputs clear whenever the run pauses, ends, or the rotate card appears, reusing the
+existing `clear()` in `main.js`.
+
+## Layout
+
+The viewport meta gains `viewport-fit=cover, user-scalable=no`. Layout uses `100dvh` and
+`env(safe-area-inset-*)` so the notch and home indicator do not overlap controls. CSS sets
+`-webkit-user-select: none` and `-webkit-touch-callout: none` to suppress long-press selection
+and double-tap zoom.
+
+In touch mode the telemetry aside compresses to a top-left block carrying total score, the
+close-pass bonus rate, the laser heat meter and the flight status line. Flight time, personal
+best, velocity and gravity are removed from flight; the end-of-run card already reports score
+breakdown and flight time, and gains personal best. The header reduces to the brand mark and
+the pause button. The footer keyboard legend and the bottom-right system label are hidden, and
+the launch note reads for touch rather than naming the up arrow.
+
+## Testing
+
+`test/camera.test.js` covers clamping at each boundary, the locked-axis case where the half
+extent exceeds the bound, the HUD offset, zoom scaling, and that `zoom: 1` with `hudPx: 0`
+reproduces the current desktop framing in both landscape and portrait window shapes.
+
+`test/touch.test.js` covers `steerToward` across the `±PI` wrap — a target of `+3.0` against a
+current of `-3.0` must turn right, not left — the deadzone, exact alignment, and `stickVector`
+deflection clamping beyond the stick radius.
+
+Pointer wiring, the orientation gate and fullscreen are not unit testable here and are verified
+by hand: `npm run dev -- --host` against a real phone in both orientations, and `?touch=1` on
+desktop. `npm run build` must stay clean.
