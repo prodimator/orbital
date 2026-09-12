@@ -17,3 +17,28 @@ main{z-index:50}header{z-index:55}
 #btn-fire{color:#91ddff;border-color:#2c4a5e}
 #btn-fire.down{background:#91ddff22;border-color:#91ddff}
 body.touch .controls{display:none}
+:root{--hud-width:0px}
+/* The chrome is absolutely positioned against the initial containing block, which mobile
+   browsers size to the LARGE viewport — so the footer hides behind the URL bar. Giving body a
+   dvh height and a position makes it the containing block, scoped to compact so desktop is
+   untouched. */
+html{height:100%}
+body.compact{--hud-width:116px;position:relative;height:100dvh}
+body.compact .edition,body.compact .system-label,body.compact .score-detail,
+body.compact .readout,body.compact .rule,body.compact #time-block,
+body.compact .hint,body.compact .version{display:none}
+body.compact header{padding:12px calc(14px + env(safe-area-inset-right)) 12px calc(14px + env(safe-area-inset-left))}
+body.compact .brand{font-size:15px;letter-spacing:3px}
+body.compact .symbol{font-size:24px}
+body.compact .telemetry{top:70px;left:calc(14px + env(safe-area-inset-left));width:var(--hud-width)}
+body.compact .telemetry .score{font-size:28px;letter-spacing:-1px}
+body.compact .bonus{margin:8px 0 14px;font-size:9px}
+body.compact .weapon{margin-top:14px}
+body.compact #flight-status{margin-top:16px}
+body.compact main{padding:20px calc(24px + env(safe-area-inset-left));background:linear-gradient(90deg,#060c13f2,#060c13d0 55%,#060c1360)}
+body.compact .intro{margin-top:0;max-width:360px}
+body.compact h1{font-size:32px;letter-spacing:-1.5px;margin:10px 0}
+body.compact p{font-size:12px;line-height:1.6;max-width:340px}
+body.compact #start{margin-top:14px;padding:13px 18px;min-width:0;gap:20px;font-size:12px}
+body.compact .launch-note{margin-top:12px}
+body.compact footer{height:52px;margin:0 calc(20px + env(safe-area-inset-left))}

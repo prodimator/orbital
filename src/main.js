@@ -3,7 +3,7 @@ import {proximityRate} from './scoring.js';
 import {createRun,advance,gravity} from './physics.js';
 import {createView} from './view.js';
 import {createTouchControls,aimInput} from './touch.js';
-import {readOverride,watchTouch} from './mode.js';
+import {readOverride,watchTouch,watchCompact} from './mode.js';
 const $=id=>document.getElementById(id);
 // One object per input source, merged each frame: the stick must write left/right continuously,
 // so it cannot share mutable state with the keyboard.
@@ -21,6 +21,14 @@ const touch=createTouchControls({input:touchInput});
 const liftHint=()=>document.body.classList.contains('touch')?'TAP THRUST TO LIFT OFF · SCORING STARTS AT LAUNCH':'PRESS ↑ TO LIFT OFF · SCORING STARTS AT LAUNCH';
 function setTouchVisible(on){document.body.classList.toggle('touch',on);touch.setVisible(on);if(mode==='ready')$('launch-note').textContent=liftHint();}
 if(override===null)watchTouch(setTouchVisible);else setTouchVisible(override);
+// Read from body, not documentElement: --hud-width is declared on body.compact, and :root only
+// carries the 0px fallback.
+const hudWidth=()=>parseFloat(getComputedStyle(document.body).getPropertyValue('--hud-width'))||0;
+watchCompact(override,compact=>{
+ document.body.classList.toggle('compact',compact);
+ view.setFraming({zoom:compact?2.2:1,hudPx:hudWidth()});
+ if(compact)setTouchVisible(true);
+});
 function clear(){Object.keys(input).forEach(k=>{input[k]=false;keyInput[k]=false;touchInput[k]=false;});}
 function launch(){state=createRun();view.reset(state);clear();mode='playing';$('overlay').classList.add('hidden');$('pause').disabled=false;$('pause').textContent='Pause flight Ⅱ';$('planet-count').textContent=`${state.bodies.length-1} PLANETS / HOME PLANET ${state.home}`;}
 function pause(){if(mode!=='playing')return;mode='paused';clear();$('card-label').textContent='FLIGHT ON HOLD';$('title').textContent='Take a breath.';$('description').textContent='Your flight is paused. Resume when you’re ready to feel the pull again.';$('start').innerHTML='Resume flight <span>↗</span>';$('launch-note').textContent='TIME AND PHYSICS ARE PAUSED';$('overlay').classList.remove('hidden');$('pause').textContent='Resume flight ▷';}
