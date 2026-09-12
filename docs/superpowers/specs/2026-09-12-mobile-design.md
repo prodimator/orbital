@@ -9,7 +9,7 @@ not modified, and the six existing test files serve as the regression check.
 
 Two separate decisions, deliberately not conflated.
 
-*Compact mode* — the zoomed camera and the compressed HUD — is a layout decision, resolved from
+_Compact mode_ — the zoomed camera and the compressed HUD — is a layout decision, resolved from
 `matchMedia('(pointer: coarse) and (hover: none)')` at load and re-evaluated whenever that query
 changes. Viewport width is deliberately not part of the test: a tablet in landscape is wider
 than many laptop windows, and gating on width would strand tablets in desktop mode. Device type
@@ -17,13 +17,13 @@ is deliberately not part of it either — iPadOS Safari reports itself as macOS,
 `navigator.userAgentData.mobile` exists only in Chromium, so both forms of user-agent sniffing
 misidentify the very devices this work targets.
 
-*Touch control visibility* is an input decision, resolved by observation rather than prediction.
+_Touch control visibility_ is an input decision, resolved by observation rather than prediction.
 A capturing `pointerdown` listener shows the controls when `event.pointerType === 'touch'`; a
 capturing `mousemove` listener hides them again. Nothing is inferred about the device, so
 nothing can be inferred wrongly, and a hybrid machine gets the right interface in both of its
 modes without being told which one it is in. Both transitions are idempotent class toggles.
 
-Compact mode is deliberately *not* driven by observed input: snapping camera zoom and HUD layout
+Compact mode is deliberately _not_ driven by observed input: snapping camera zoom and HUD layout
 mid-flight because a trackpad was brushed would be worse than an occasional wrong guess at load.
 
 Both live in `src/mode.js`, which exports `resolveCompact({coarse, hoverless, override})` as a pure
@@ -55,7 +55,7 @@ entire mechanism, not a fallback.
 leading `Math.min` preserves today's behaviour of widening the view when a desktop window is
 taller than it is wide, and is inert in landscape.
 
-The HUD occupies `hudPx` of screen width, so the *usable* half-width is
+The HUD occupies `hudPx` of screen width, so the _usable_ half-width is
 `usableHalfW = halfW - offset` where `offset = hudPx * halfH / height` — half the panel width in
 world units. Clamping applies to the usable area, not the whole frustum: the followed point is
 clamped to `±(bound - usableHalfW)` horizontally and `±(bound - halfH)` vertically, locking to
