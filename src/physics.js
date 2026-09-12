@@ -3,7 +3,7 @@ import {updateAsteroids} from './asteroids.js';
 import {proximityRate} from './scoring.js';
 export const LIMIT = 900;
 export const DT = 1 / 120;
-export const THRUST = 48;
+export const THRUST = 54;
 export const TURN = 2.8;
 // Gameplay attraction is independent of the prescribed planetary orbit speeds.
 export const GRAVITY_STRENGTH = 2;
