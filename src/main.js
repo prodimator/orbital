@@ -4,6 +4,7 @@ import {createRun,advance,gravity} from './physics.js';
 import {createView} from './view.js';
 import {createTouchControls,aimInput} from './touch.js';
 import {readOverride,watchTouch,watchCompact} from './mode.js';
+import {createOrientationGate,requestLandscape} from './orientation.js';
 const $=id=>document.getElementById(id);
 // One object per input source, merged each frame: the stick must write left/right continuously,
 // so it cannot share mutable state with the keyboard.
@@ -29,11 +30,13 @@ watchCompact(override,compact=>{
  view.setFraming({zoom:compact?2.2:1,hudPx:hudWidth()});
  if(compact)setTouchVisible(true);
 });
+createOrientationGate({onBlock:()=>{pause();clear();}});
 function clear(){Object.keys(input).forEach(k=>{input[k]=false;keyInput[k]=false;touchInput[k]=false;});}
 function launch(){state=createRun();view.reset(state);clear();mode='playing';$('overlay').classList.add('hidden');$('pause').disabled=false;$('pause').textContent='Pause flight Ⅱ';$('planet-count').textContent=`${state.bodies.length-1} PLANETS / HOME PLANET ${state.home}`;}
 function pause(){if(mode!=='playing')return;mode='paused';clear();$('card-label').textContent='FLIGHT ON HOLD';$('title').textContent='Take a breath.';$('description').textContent='Your flight is paused. Resume when you’re ready to feel the pull again.';$('start').innerHTML='Resume flight <span>↗</span>';$('launch-note').textContent='TIME AND PHYSICS ARE PAUSED';$('overlay').classList.remove('hidden');$('pause').textContent='Resume flight ▷';}
 function resume(){mode='playing';last=performance.now();$('overlay').classList.add('hidden');$('pause').textContent='Pause flight Ⅱ';}
-$('start').onclick=()=>mode==='paused'?resume():launch();
+// requestLandscape must start synchronously inside the gesture for requestFullscreen to be allowed.
+$('start').onclick=()=>{if(document.body.classList.contains('compact'))requestLandscape();mode==='paused'?resume():launch();};
 $('pause').onclick=()=>mode==='paused'?resume():pause();
 const keys={w: 'up', a:'left', d:'right',ArrowLeft:'left',ArrowRight:'right',ArrowUp:'up',' ':'shoot'};
 addEventListener('keydown',e=>{if(keys[e.key]){e.preventDefault();if(mode==='playing')keyInput[keys[e.key]]=true;}});

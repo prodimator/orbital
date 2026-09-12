@@ -42,3 +42,8 @@ body.compact p{font-size:12px;line-height:1.6;max-width:340px}
 body.compact #start{margin-top:14px;padding:13px 18px;min-width:0;gap:20px;font-size:12px}
 body.compact .launch-note{margin-top:12px}
 body.compact footer{height:52px;margin:0 calc(20px + env(safe-area-inset-left))}
+#rotate{position:fixed;inset:0;z-index:60;background:#060c13f7;display:grid;place-items:center;text-align:center;padding:24px}
+#rotate[hidden]{display:none}
+#rotate span{font-size:52px;color:#b9eddb;display:block;margin-bottom:18px}
+#rotate b{font-family:'Space Grotesk',sans-serif;font-size:26px;font-weight:500;display:block;letter-spacing:-1px}
+#rotate small{display:block;margin-top:12px;font-size:9px;letter-spacing:2px;color:#6d8593}
