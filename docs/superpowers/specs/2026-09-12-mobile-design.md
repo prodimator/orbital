@@ -7,12 +7,30 @@ not modified, and the six existing test files serve as the regression check.
 
 ## Mobile mode
 
-Touch mode engages when `(pointer: coarse)` and `(hover: none)` both match. Viewport width is
-deliberately not part of the test: a tablet in landscape is wider than many laptop windows, and
-gating on width would strand tablets in desktop mode with no controls at all. A `?touch=1` query
-parameter forces it on for desktop testing; `?touch=0` forces it off.
-Desktop behaviour is unchanged in every respect. Keyboard listeners stay registered in touch
-mode so an attached keyboard still works.
+Two separate decisions, deliberately not conflated.
+
+*Compact mode* — the zoomed camera and the compressed HUD — is a layout decision, resolved from
+`matchMedia('(pointer: coarse) and (hover: none)')` at load and re-evaluated whenever that query
+changes. Viewport width is deliberately not part of the test: a tablet in landscape is wider
+than many laptop windows, and gating on width would strand tablets in desktop mode. Device type
+is deliberately not part of it either — iPadOS Safari reports itself as macOS, and
+`navigator.userAgentData.mobile` exists only in Chromium, so both forms of user-agent sniffing
+misidentify the very devices this work targets.
+
+*Touch control visibility* is an input decision, resolved by observation rather than prediction.
+A capturing `pointerdown` listener shows the controls when `event.pointerType === 'touch'`; a
+capturing `mousemove` listener hides them again. Nothing is inferred about the device, so
+nothing can be inferred wrongly, and a hybrid machine gets the right interface in both of its
+modes without being told which one it is in. Both transitions are idempotent class toggles.
+
+Compact mode is deliberately *not* driven by observed input: snapping camera zoom and HUD layout
+mid-flight because a trackpad was brushed would be worse than an occasional wrong guess at load.
+
+Both live in `src/mode.js`, which exports `resolveCompact({coarse, hover, override})` as a pure
+function so the precedence is testable. `?touch=1` forces compact mode and the controls on for
+desktop testing; `?touch=0` forces both off. Desktop behaviour is otherwise unchanged in every
+respect. Keyboard listeners stay registered at all times, so a keyboard works on a tablet and
+touch works on a touchscreen laptop.
 
 ## Orientation
 
@@ -40,7 +58,7 @@ left by half the HUD width converted to world units (`hudPx * halfH / height`) s
 centred in the area right of the panel. The centre is then clamped per axis to
 `±(bound - half)`; when `half >= bound` that axis locks to `0`.
 
-`bound` is `LIMIT + 60`. `zoom` is `2.2` in touch mode and `1` on desktop, where the function
+`bound` is `LIMIT + 60`. `zoom` is `2.2` in compact mode and `1` otherwise, where the function
 reproduces today's framing in [view.js](../../../src/view.js). At 2.2 on a 844x390 viewport the
 ship renders about 11px, `halfW` is 1002 against a bound of 960, so horizontal panning does not
 engage on a phone and the perimeter ring stays framed on both sides; only vertical follow is
@@ -53,10 +71,11 @@ does not vary with frame rate. `resize()` and `draw()` both route through `frame
 
 ## Touch controls
 
-`src/touch.js` wires a `<div id="touch">` overlay carrying `touch-action: none`, present only
-in touch mode. Pointer events are used throughout, with one tracked `pointerId` per control so
-two thumbs work simultaneously. Buttons act on `pointerdown`, never on a synthesized click,
-because click latency is felt on the fire button.
+`src/touch.js` wires a `<div id="touch">` overlay carrying `touch-action: none`. The overlay is
+built once at startup and held at `display: none` until a touch is observed, so it is inert on
+desktop yet costs no construction latency on first contact. Pointer events are used throughout,
+with one tracked `pointerId` per control so two thumbs work simultaneously. Buttons act on
+`pointerdown`, never on a synthesized click, because click latency is felt on the fire button.
 
 Left zone: a floating heading stick whose origin is wherever the thumb lands. `stickVector()`
 converts pointer position to a direction and a deflection clamped to `[0, 1]`; deflection under
@@ -86,12 +105,16 @@ The viewport meta gains `viewport-fit=cover, user-scalable=no`. Layout uses `100
 `-webkit-user-select: none` and `-webkit-touch-callout: none` to suppress long-press selection
 and double-tap zoom.
 
-In touch mode the telemetry aside compresses to a top-left block carrying total score, the
+In compact mode the telemetry aside compresses to a top-left block carrying total score, the
 close-pass bonus rate, the laser heat meter and the flight status line. Flight time, personal
 best, velocity and gravity are removed from flight; the end-of-run card already reports score
 breakdown and flight time, and gains personal best. The header reduces to the brand mark and
-the pause button. The footer keyboard legend and the bottom-right system label are hidden, and
-the launch note reads for touch rather than naming the up arrow.
+the pause button, and the bottom-right system label is hidden.
+
+The footer keyboard legend follows the controls rather than compact mode — it is hidden once a
+touch is observed and restored on mouse movement, so a touchscreen laptop never shows a legend
+for keys the player is not using. For the same reason the launch note reads "TAP THRUST TO LIFT
+OFF" while touch controls are visible and names the up arrow otherwise.
 
 ## Testing
 
@@ -99,10 +122,14 @@ the launch note reads for touch rather than naming the up arrow.
 extent exceeds the bound, the HUD offset, zoom scaling, and that `zoom: 1` with `hudPx: 0`
 reproduces the current desktop framing in both landscape and portrait window shapes.
 
+`test/mode.test.js` covers `resolveCompact` precedence: both media conditions true engages it,
+either one false does not, and an explicit `override` of `true` or `false` wins over both.
+
 `test/touch.test.js` covers `steerToward` across the `±PI` wrap — a target of `+3.0` against a
 current of `-3.0` must turn right, not left — the deadzone, exact alignment, and `stickVector`
 deflection clamping beyond the stick radius.
 
 Pointer wiring, the orientation gate and fullscreen are not unit testable here and are verified
-by hand: `npm run dev -- --host` against a real phone in both orientations, and `?touch=1` on
-desktop. `npm run build` must stay clean.
+by hand: `npm run dev -- --host` against a real phone in both orientations, `?touch=1` on
+desktop, and a touchscreen laptop alternating between finger and mouse to confirm the controls
+and keyboard legend swap without the camera or HUD shifting. `npm run build` must stay clean.
