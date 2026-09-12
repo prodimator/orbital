@@ -65,9 +65,9 @@ clamped to `±(bound - usableHalfW)` horizontally and `±(bound - halfH)` vertic
 Order matters. Clamping the frustum and subtracting the offset afterwards would discard the
 offset precisely in the phone case, where `halfW` exceeds `bound` and the axis locks to zero.
 Clamping the usable area instead keeps the panel over empty space outside the perimeter while
-the playable region stays framed: at 844x390 with a 116px panel the world shifts 47px right, and
-with the ship against the perimeter at `x = 900` the frustum's right edge lands exactly on
-`bound`.
+the playable region stays framed: at 844x390 with a 116px panel the world shifts right by half
+the panel width (58px), and with the ship against the perimeter at `x = 900` the frustum's right
+edge lands exactly on `bound`.
 
 `bound` is `LIMIT + 60`. `zoom` is `2.2` in compact mode and `1` otherwise, where the function
 reproduces today's framing in [view.js](../../../src/view.js). At 2.2 on a 844x390 viewport the
