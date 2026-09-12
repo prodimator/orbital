@@ -19,3 +19,9 @@ Gravity tuning: `GRAVITY_STRENGTH` in src/physics.js scales both star and planet
 The workflow in `.github/workflows/deploy.yml` tests, builds, and deploys pushes to main. In the GitHub repository, enable Settings > Pages > Source > GitHub Actions before running it. No personal access token or custom secret is needed by the workflow.
 
 Production assets use `/orbital/`; local development stays at `/`. If the repository is renamed or you add a custom domain, update `base` in vite.config.js. Build with `npm run build`. To inspect the production build locally, run `npx vite preview` and open `/orbital/` on the displayed host.
+
+Launch sequence: Start simulation begins planetary motion with the ship resting on its home planet. Press Up to lift off with an outward impulse, then hold Up for thrust. Flight time and points start only after liftoff; waiting on the surface earns nothing. The planet's motion and the flight timer use separate clocks.
+
+Planetary attraction now has an additional 2x multiplier (`PLANET_GRAVITY_MULTIPLIER`), independent of stellar gravity. This strengthens close-planet pulls while retaining existing star masses, thrust and orbital speeds.
+
+Asteroids: the first arrives 6 seconds after liftoff, followed by one every 3–7 seconds. Each spawns at radius 980, outside the 900-unit flight perimeter, traveling inward from a random bearing with a varied offset, speed of 65–160 units/s and radius of 5–11. The same celestial gravity accelerates both asteroids and the ship. Asteroid impacts end a flight; rocks hitting celestial bodies are removed. Rocks expire after 60 seconds or beyond radius 1250, with at most 18 active. Spawning and movement pause with simulation. Rocks do not contribute proximity points or gravitational attraction.

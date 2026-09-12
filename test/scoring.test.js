@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {createRun,step,advance} from '../src/physics.js';
+import {createRun as createLandedRun,step,advance} from '../src/physics.js';
 import {proximityRate} from '../src/scoring.js';
 test('surface proximity rewards close passes with a bounded nonlinear bonus',()=>{
   const body={x:0,y:0,r:20};
@@ -22,3 +22,5 @@ test('scoring is identical across frame rates',()=>{
   for(let i=0;i<288;i++)advance(b,{up:true},1/144);
   assert.ok(Math.abs(a.score-b.score)<1e-8);
 });
+
+function createRun(random){const s=createLandedRun(random);step(s,{up:true});return s;}

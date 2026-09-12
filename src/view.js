@@ -19,7 +19,15 @@ export function createView(container) {
   const flame=new THREE.Mesh(new THREE.ShapeGeometry(flameShape),new THREE.MeshBasicMaterial({color:0x7fffd5,transparent:true,opacity:.8}));ship.add(flame);
   const marker=ring(17,0xb3eedc,.5);ship.add(marker);
   const trailGeo=new THREE.BufferGeometry();trailGeo.setAttribute('position',new THREE.BufferAttribute(new Float32Array(220*3),3));trailGeo.setDrawRange(0,0);const trail=new THREE.Line(trailGeo,new THREE.LineBasicMaterial({color:0x88d7c4,transparent:true,opacity:.35}));trail.frustumCulled=false;scene.add(trail);let history=[];
+  const rockGeometry=new THREE.IcosahedronGeometry(1,0);
+  const rockMaterial=new THREE.MeshStandardMaterial({color:0xd9aa83,roughness:1,flatShading:true,emissive:0x38251b,emissiveIntensity:.7});
+  const bulletGeometry=new THREE.PlaneGeometry(12,2.5);
+  const bulletMaterial=new THREE.MeshBasicMaterial({color:0x91ddff});
+  const bulletMeshes=new Map();
+  const rockMeshes=new Map();
   function reset(state){
+    for(const mesh of bulletMeshes.values())scene.remove(mesh);bulletMeshes.clear();
+    for(const mesh of rockMeshes.values())scene.remove(mesh);rockMeshes.clear();
     system.traverse(o=>{o.geometry?.dispose();if(o.material)o.material.dispose();});scene.remove(system);system=new THREE.Group();scene.add(system);meshes=[];history=[];trailGeo.setDrawRange(0,0);
     for(const b of state.bodies){
       if(b.orbit)system.add(ring(b.orbit,0x557684,.23));
@@ -36,6 +44,16 @@ export function createView(container) {
     ship.position.set(state.ship.x,state.ship.y,10);ship.rotation.z=state.ship.angle;ship.visible=state.alive;
     flame.visible=thrust&&active;flame.scale.x=.8+Math.random()*.5;marker.visible=!active;
     if(active&&state.alive){history.push(new THREE.Vector3(state.ship.x,state.ship.y,5));if(history.length>220)history.shift();const positions=trailGeo.attributes.position;history.forEach((p,i)=>positions.setXYZ(i,p.x,p.y,p.z));positions.needsUpdate=true;trailGeo.setDrawRange(0,history.length);}
+    const ids=new Set(state.asteroids.map(a=>a.id));
+    for(const [id,mesh] of rockMeshes){if(!ids.has(id)){scene.remove(mesh);rockMeshes.delete(id);}}
+    for(const a of state.asteroids){
+      let mesh=rockMeshes.get(a.id);
+      if(!mesh){mesh=new THREE.Mesh(rockGeometry,rockMaterial);rockMeshes.set(a.id,mesh);scene.add(mesh);}
+      mesh.position.set(a.x,a.y,4);mesh.scale.setScalar(a.r);mesh.rotation.set(a.age*.7,a.age*.4,a.age*.9);
+    }
+    const bulletIds=new Set(state.projectiles.map(p=>p.id));
+    for(const [id,mesh] of bulletMeshes){if(!bulletIds.has(id)){scene.remove(mesh);bulletMeshes.delete(id);}}
+    for(const p of state.projectiles){let mesh=bulletMeshes.get(p.id);if(!mesh){mesh=new THREE.Mesh(bulletGeometry,bulletMaterial);bulletMeshes.set(p.id,mesh);scene.add(mesh);}mesh.position.set(p.x,p.y,12);mesh.rotation.z=Math.atan2(p.vy,p.vx);}
     renderer.render(scene,camera);
   }
   return {reset,draw};

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createRun, gravity, step, advance, sweptHit } from '../src/physics.js';
+import { createRun as createLandedRun, gravity, step, advance, sweptHit } from '../src/physics.js';
 test('larger randomized stars pull harder at the same distance',()=>{
   const system=value=>{let calls=0;return createRun(()=>{calls++;return calls===9?value:calls===8?.99:.5;});};
   const small=system(0),large=system(.999999);
@@ -32,3 +32,5 @@ test('gravity demands input after launch while thrust remains effective',()=>{
   }
   assert.ok(poweredSurvivors>=95,'At least 95% of sampled launches remain survivable with immediate thrust');
 });
+
+function createRun(random){const s=createLandedRun(random);step(s,{up:true});return s;}
