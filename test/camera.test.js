@@ -37,7 +37,7 @@ test('an axis wider than the bound locks to zero instead of panning',()=>{
  assert.ok(a.halfW>BOUND);near(a.cx,0);near(b.cx,0);
 });
 
-test('the HUD offset survives a locked axis and equals half the panel width',()=>{
+test('a panel shifts a centred frame right by half the panel width without resizing it',()=>{
  const bare=frame({shipX:0,shipY:0,width:844,height:390,zoom:2.2,hudPx:0,bound:BOUND});
  const panel=frame({shipX:0,shipY:0,width:844,height:390,zoom:2.2,hudPx:116,bound:BOUND});
  near(panel.halfW,bare.halfW);
