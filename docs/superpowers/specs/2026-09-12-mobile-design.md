@@ -26,7 +26,7 @@ modes without being told which one it is in. Both transitions are idempotent cla
 Compact mode is deliberately *not* driven by observed input: snapping camera zoom and HUD layout
 mid-flight because a trackpad was brushed would be worse than an occasional wrong guess at load.
 
-Both live in `src/mode.js`, which exports `resolveCompact({coarse, hover, override})` as a pure
+Both live in `src/mode.js`, which exports `resolveCompact({coarse, hoverless, override})` as a pure
 function so the precedence is testable. `?touch=1` forces compact mode and the controls on for
 desktop testing; `?touch=0` forces both off. Desktop behaviour is otherwise unchanged in every
 respect. Keyboard listeners stay registered at all times, so a keyboard works on a tablet and
@@ -53,10 +53,21 @@ entire mechanism, not a fallback.
 
 `halfH = 1020 / Math.min(1, width / height) / zoom`, `halfW = halfH * width / height`. The
 leading `Math.min` preserves today's behaviour of widening the view when a desktop window is
-taller than it is wide, and is inert in landscape. The camera centre follows the ship, shifted
-left by half the HUD width converted to world units (`hudPx * halfH / height`) so the ship sits
-centred in the area right of the panel. The centre is then clamped per axis to
-`±(bound - half)`; when `half >= bound` that axis locks to `0`.
+taller than it is wide, and is inert in landscape.
+
+The HUD occupies `hudPx` of screen width, so the *usable* half-width is
+`usableHalfW = halfW - offset` where `offset = hudPx * halfH / height` — half the panel width in
+world units. Clamping applies to the usable area, not the whole frustum: the followed point is
+clamped to `±(bound - usableHalfW)` horizontally and `±(bound - halfH)` vertically, locking to
+`0` on any axis whose half-extent already meets or exceeds `bound`. The camera centre is then
+`cx = focusX - offset`, `cy = focusY`.
+
+Order matters. Clamping the frustum and subtracting the offset afterwards would discard the
+offset precisely in the phone case, where `halfW` exceeds `bound` and the axis locks to zero.
+Clamping the usable area instead keeps the panel over empty space outside the perimeter while
+the playable region stays framed: at 844x390 with a 116px panel the world shifts 47px right, and
+with the ship against the perimeter at `x = 900` the frustum's right edge lands exactly on
+`bound`.
 
 `bound` is `LIMIT + 60`. `zoom` is `2.2` in compact mode and `1` otherwise, where the function
 reproduces today's framing in [view.js](../../../src/view.js). At 2.2 on a 844x390 viewport the
@@ -119,7 +130,8 @@ OFF" while touch controls are visible and names the up arrow otherwise.
 ## Testing
 
 `test/camera.test.js` covers clamping at each boundary, the locked-axis case where the half
-extent exceeds the bound, the HUD offset, zoom scaling, and that `zoom: 1` with `hudPx: 0`
+extent exceeds the bound, the HUD offset surviving a locked axis, the ship-at-perimeter case
+where `cx + halfW` equals `bound`, zoom scaling, and that `zoom: 1` with `hudPx: 0`
 reproduces the current desktop framing in both landscape and portrait window shapes.
 
 `test/mode.test.js` covers `resolveCompact` precedence: both media conditions true engages it,
