@@ -10,8 +10,14 @@ export function watchCompact(override,onChange){
 }
 // Control visibility is an INPUT decision, observed rather than predicted. Browsers emit
 // compatibility mouse events after a touch, so a recent touch suppresses the mouse path.
+// The clock must refresh on move and up, not only on down: the thumbstick is held for the whole
+// flight, and the trailing compatibility mousemove arrives after touchend. Anchoring the window
+// to pointerdown alone would let it lapse mid-hold and hide the controls on every stick release.
 export function watchTouch(onChange){
  let lastTouch=0;
+ const refresh=e=>{if(e.pointerType==='touch')lastTouch=performance.now();};
  addEventListener('pointerdown',e=>{if(e.pointerType==='touch'){lastTouch=performance.now();onChange(true);}},{capture:true});
+ addEventListener('pointermove',refresh,{capture:true});
+ addEventListener('pointerup',refresh,{capture:true});
  addEventListener('mousemove',()=>{if(performance.now()-lastTouch>1000)onChange(false);},{capture:true});
 }
