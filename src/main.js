@@ -18,23 +18,34 @@ $('best').textContent=best.toFixed(1);
 let view;
 try{view=createView($('space'));view.reset(state);}catch(error){$('title').textContent='WebGL unavailable';$('description').textContent='This game needs a browser with WebGL enabled. Enable hardware acceleration and reload.';$('start').disabled=true;throw error;}
 const override=readOverride(location.search);
-const touch=createTouchControls({input:touchInput});
+// clear() is hoisted above this line and reaches for the controls, so the binding starts null
+// rather than uninitialised: a call before construction must be a no-op, not a TDZ throw.
+let touch=null;touch=createTouchControls({input:touchInput});
 const liftHint=()=>document.body.classList.contains('touch')?'TAP THRUST TO LIFT OFF · SCORING STARTS AT LAUNCH':'PRESS ↑ TO LIFT OFF · SCORING STARTS AT LAUNCH';
-function setTouchVisible(on){document.body.classList.toggle('touch',on);touch.setVisible(on);if(mode==='ready')$('launch-note').textContent=liftHint();}
+// mousemove fires onChange(false) at pointer rate, so applying only real changes keeps the DOM
+// writes off the desktop hot path.
+let touchVisible=null;
+function setTouchVisible(on){if(touchVisible===on)return;touchVisible=on;document.body.classList.toggle('touch',on);touch?.setVisible(on);if(mode==='ready')$('launch-note').textContent=liftHint();}
 if(override===null)watchTouch(setTouchVisible);else setTouchVisible(override);
 // Read from body, not documentElement: --hud-width is declared on body.compact, and :root only
 // carries the 0px fallback.
 const hudWidth=()=>parseFloat(getComputedStyle(document.body).getPropertyValue('--hud-width'))||0;
+// Constructed before watchCompact: watchCompact invokes its callback synchronously at setup and
+// that callback re-applies the gate. The portrait media query alone would also fire on a narrow
+// DESKTOP window, which the camera supports, so the gate is scoped to compact.
+const gate=createOrientationGate({onBlock:()=>{pause();clear();},enabled:()=>document.body.classList.contains('compact')});
 watchCompact(override,compact=>{
  document.body.classList.toggle('compact',compact);
  view.setFraming({zoom:compact?2.2:1,hudPx:hudWidth()});
- if(compact)setTouchVisible(true);
+ if(override===null)setTouchVisible(compact);
+ gate.apply();
 });
-createOrientationGate({onBlock:()=>{pause();clear();}});
-function clear(){Object.keys(input).forEach(k=>{input[k]=false;keyInput[k]=false;touchInput[k]=false;});}
-function launch(){state=createRun();view.reset(state);clear();mode='playing';$('overlay').classList.add('hidden');$('pause').disabled=false;$('pause').textContent='Pause flight Ⅱ';$('planet-count').textContent=`${state.bodies.length-1} PLANETS / HOME PLANET ${state.home}`;}
+function clear(){Object.keys(input).forEach(k=>{input[k]=false;keyInput[k]=false;touchInput[k]=false;});touch?.release();}
+function launch(){if(gate.blocked())return;state=createRun();view.reset(state);clear();mode='playing';$('overlay').classList.add('hidden');$('pause').disabled=false;$('pause').textContent='Pause flight Ⅱ';$('planet-count').textContent=`${state.bodies.length-1} PLANETS / HOME PLANET ${state.home}`;}
 function pause(){if(mode!=='playing')return;mode='paused';clear();$('card-label').textContent='FLIGHT ON HOLD';$('title').textContent='Take a breath.';$('description').textContent='Your flight is paused. Resume when you’re ready to feel the pull again.';$('start').innerHTML='Resume flight <span>↗</span>';$('launch-note').textContent='TIME AND PHYSICS ARE PAUSED';$('overlay').classList.remove('hidden');$('pause').textContent='Resume flight ▷';}
-function resume(){mode='playing';last=performance.now();$('overlay').classList.add('hidden');$('pause').textContent='Pause flight Ⅱ';}
+// Both entry points are gated: the card blocks pointers by z-order only, so a keyboard-activated
+// Pause button behind it would otherwise advance physics the player cannot see.
+function resume(){if(gate.blocked())return;mode='playing';last=performance.now();$('overlay').classList.add('hidden');$('pause').textContent='Pause flight Ⅱ';}
 // requestLandscape must start synchronously inside the gesture for requestFullscreen to be allowed.
 $('start').onclick=()=>{if(document.body.classList.contains('compact'))requestLandscape();mode==='paused'?resume():launch();};
 $('pause').onclick=()=>mode==='paused'?resume():pause();

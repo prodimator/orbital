@@ -13,10 +13,13 @@ export function watchCompact(override,onChange){
 // The clock must refresh on move and up, not only on down: the thumbstick is held for the whole
 // flight, and the trailing compatibility mousemove arrives after touchend. Anchoring the window
 // to pointerdown alone would let it lapse mid-hold and hide the controls on every stick release.
+// Anything that is not a mouse counts as touch: the stick zone and the buttons accept pen
+// pointers, so a stylus user would otherwise never refresh the clock and the trailing
+// compatibility mousemove would hide the controls mid-flight.
 export function watchTouch(onChange){
  let lastTouch=0;
- const refresh=e=>{if(e.pointerType==='touch')lastTouch=performance.now();};
- addEventListener('pointerdown',e=>{if(e.pointerType==='touch'){lastTouch=performance.now();onChange(true);}},{capture:true});
+ const refresh=e=>{if(e.pointerType!=='mouse')lastTouch=performance.now();};
+ addEventListener('pointerdown',e=>{if(e.pointerType!=='mouse'){lastTouch=performance.now();onChange(true);}},{capture:true});
  addEventListener('pointermove',refresh,{capture:true});
  addEventListener('pointerup',refresh,{capture:true});
  addEventListener('mousemove',()=>{if(performance.now()-lastTouch>1000)onChange(false);},{capture:true});
