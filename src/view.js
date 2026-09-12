@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { LIMIT } from './physics.js';
+import { frame } from './camera.js';
 export function createView(container) {
   const renderer=new THREE.WebGLRenderer({antialias:true});
   renderer.setPixelRatio(Math.min(devicePixelRatio,2));container.append(renderer.domElement);
@@ -29,6 +30,7 @@ export function createView(container) {
     for(const mesh of bulletMeshes.values())scene.remove(mesh);bulletMeshes.clear();
     for(const mesh of rockMeshes.values())scene.remove(mesh);rockMeshes.clear();
     system.traverse(o=>{o.geometry?.dispose();if(o.material)o.material.dispose();});scene.remove(system);system=new THREE.Group();scene.add(system);meshes=[];history=[];trailGeo.setDrawRange(0,0);
+    focusX=state.ship.x;focusY=state.ship.y;snap=true;apply(0);
     for(const b of state.bodies){
       if(b.orbit)system.add(ring(b.orbit,0x557684,.23));
       const mesh=new THREE.Mesh(new THREE.SphereGeometry(b.r,48,32),b.orbit?new THREE.MeshStandardMaterial({color:b.color,roughness:.9}):new THREE.MeshBasicMaterial({color:b.color}));
@@ -37,9 +39,19 @@ export function createView(container) {
       else {const rim=ring(b.r+3,b.color,.25);mesh.add(rim);}
     }
   }
-  function resize(){const w=innerWidth,h=innerHeight;renderer.setSize(w,h);const aspect=w/h;const extent=1020/Math.min(1,aspect);camera.left=-extent*aspect;camera.right=extent*aspect;camera.top=extent;camera.bottom=-extent;camera.updateProjectionMatrix();}
+  let zoom=1,hudPx=0,focusX=0,focusY=0,snap=true;
+  function apply(elapsed){
+    const f=frame({shipX:focusX,shipY:focusY,width:innerWidth,height:innerHeight,zoom,hudPx,bound:LIMIT+60});
+    camera.left=-f.halfW;camera.right=f.halfW;camera.top=f.halfH;camera.bottom=-f.halfH;
+    const k=snap?1:1-Math.exp(-elapsed/.12);snap=false;
+    camera.position.x+=(f.cx-camera.position.x)*k;camera.position.y+=(f.cy-camera.position.y)*k;
+    camera.updateProjectionMatrix();
+  }
+  function resize(){renderer.setSize(innerWidth,innerHeight);snap=true;apply(0);}
+  function setFraming(next){if(next.zoom!==undefined)zoom=next.zoom;if(next.hudPx!==undefined)hudPx=next.hudPx;snap=true;apply(0);}
   addEventListener('resize',resize);resize();
-  function draw(state,thrust,active){
+  function draw(state,thrust,active,elapsed=0){
+    focusX=state.ship.x;focusY=state.ship.y;apply(Math.min(elapsed,.1));
     state.bodies.forEach((b,i)=>{meshes[i].position.set(b.x,b.y,0);});
     ship.position.set(state.ship.x,state.ship.y,10);ship.rotation.z=state.ship.angle;ship.visible=state.alive;
     flame.visible=thrust&&active;flame.scale.x=.8+Math.random()*.5;marker.visible=!active;
@@ -56,5 +68,5 @@ export function createView(container) {
     for(const p of state.projectiles){let mesh=bulletMeshes.get(p.id);if(!mesh){mesh=new THREE.Mesh(bulletGeometry,bulletMaterial);bulletMeshes.set(p.id,mesh);scene.add(mesh);}mesh.position.set(p.x,p.y,12);mesh.rotation.z=Math.atan2(p.vy,p.vx);}
     renderer.render(scene,camera);
   }
-  return {reset,draw};
+  return {reset,draw,setFraming};
 }
