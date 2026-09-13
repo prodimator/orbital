@@ -42,7 +42,12 @@ export function createView(container) {
       new THREE.LineBasicMaterial({color, transparent: true, opacity}),
     );
   }
-  const boundary = ring(LIMIT, 0x6a9d9c, 0.22);
+  // A mesh band keeps the flight limit visibly thicker on desktop and mobile WebGL.
+  const boundary = new THREE.Mesh(
+    new THREE.RingGeometry(LIMIT - 1, LIMIT + 1, 512),
+    new THREE.MeshBasicMaterial({color: 0xb9eddb, transparent: true, opacity: 0.85}),
+  );
+  boundary.position.z = -4;
   scene.add(boundary);
   const shape = new THREE.Shape();
   shape.moveTo(10, 0);
