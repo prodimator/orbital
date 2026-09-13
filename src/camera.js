@@ -1,4 +1,5 @@
 export const BASE_EXTENT = 1020;
+export const DEFAULT_ZOOM = 2.2;
 // The followed point is clamped against the USABLE viewport (the part not covered by the HUD),
 // then shifted left by half the panel. Clamping the whole frustum first would discard the shift
 // on any axis wide enough to lock, which is exactly the phone case.
@@ -11,7 +12,7 @@ export function frame({
   shipY = 0,
   width,
   height,
-  zoom = 1,
+  zoom = DEFAULT_ZOOM,
   hudPx = 0,
   bound = Infinity,
 }) {

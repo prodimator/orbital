@@ -1,6 +1,78 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {createRun as createLandedRun, gravity, step, advance, sweptHit} from '../src/physics.js';
+import {
+  createRun as createLandedRun,
+  gravity,
+  step,
+  advance,
+  sweptHit,
+  THRUST,
+} from '../src/physics.js';
+
+test('planets noticeably bend coasting flight far above their surfaces', () => {
+  for (const value of [0, 0.5, 0.999]) {
+    const planet = createLandedRun(() => value).bodies[1];
+    const distance = planet.r + 150;
+    const g = gravity({x: planet.x + distance, y: planet.y}, [planet]);
+    assert.ok(-g.x >= 8, 'Pull remains noticeable 150 units above even a small planet');
+    assert.ok(-g.x > (planet.mu / distance ** 2) * 2, 'Distant pull exceeds the old field');
+    assert.equal(g.y, 0);
+    const farther = gravity({x: planet.x + distance + 150, y: planet.y}, [planet]);
+    assert.ok(-farther.x > 0 && -farther.x < -g.x, 'Attraction fades with distance');
+  }
+});
+
+test('thrust exceeds planetary attraction at every altitude, including overlapping fields', () => {
+  const planets = createLandedRun(() => 0.999).bodies.slice(1);
+  for (const p of planets) {
+    p.x = 0;
+    p.y = 0;
+  }
+  for (const altitude of [0, 3.5, 10, 50, 150, 300, 900]) {
+    for (const bodies of [planets, ...planets.map((p) => [p])]) {
+      const g = gravity({x: planets[0].r + altitude, y: 0}, bodies);
+      assert.ok(Math.hypot(g.x, g.y) <= THRUST * 0.7 + 1e-10);
+      assert.ok(g.x < 0);
+    }
+  }
+});
+
+test('sun retains its exact inverse-square force when planetary fields overlap', () => {
+  const s = createLandedRun(() => 0.999);
+  const sun = s.bodies[0];
+  const planets = s.bodies.slice(1);
+  for (const ship of [
+    {x: 150, y: 80},
+    {x: -400, y: 200},
+  ]) {
+    const d2 = ship.x ** 2 + ship.y ** 2;
+    const starOnly = gravity(ship, [sun]);
+    assert.equal(starOnly.x, -ship.x * (sun.mu / (d2 * Math.sqrt(d2))));
+    const planetOnly = gravity(ship, planets);
+    const combined = gravity(ship, s.bodies);
+    assert.ok(Math.abs(combined.x - planetOnly.x - starOnly.x) < 1e-10);
+    assert.ok(Math.abs(combined.y - planetOnly.y - starOnly.y) < 1e-10);
+  }
+});
+
+test('outward thrust escapes a planet from rest just above its surface', () => {
+  for (const value of [0, 0.5, 0.999]) {
+    const s = createLandedRun(() => value);
+    const planet = s.bodies[1];
+    // Isolate planetary escape from solar gravity and prescribed orbital motion.
+    planet.phase = 0;
+    planet.omega = 0;
+    planet.x = planet.orbit;
+    planet.y = 0;
+    s.bodies = [planet];
+    s.phase = 'flying';
+    s.ship = {x: planet.x + planet.r + 3.6, y: 0, vx: 0, vy: 0, angle: 0, r: 3.5};
+    for (let i = 0; i < 480; i++) step(s, {up: true});
+    assert.ok(s.alive, 'Full outward thrust clears the surface without a launch boost');
+    assert.ok(s.ship.x - planet.x - planet.r > 200);
+    assert.ok(s.ship.vx > 100);
+  }
+});
 test('larger randomized stars pull harder at the same distance', () => {
   const system = (value) => {
     let calls = 0;

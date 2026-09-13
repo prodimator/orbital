@@ -69,7 +69,7 @@ const gate = createOrientationGate({
 });
 watchCompact(override, (compact) => {
   document.body.classList.toggle('compact', compact);
-  view.setFraming({zoom: compact ? 2.2 : 1, hudPx: hudWidth()});
+  view.setFraming({hudPx: hudWidth()});
   if (override === null) setTouchVisible(compact);
   gate.apply();
 });

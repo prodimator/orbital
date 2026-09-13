@@ -8,6 +8,8 @@ export const TURN = 2.8;
 // Gameplay attraction is independent of the prescribed planetary orbit speeds.
 export const GRAVITY_STRENGTH = 2;
 export const PLANET_GRAVITY_MULTIPLIER = 2;
+export const PLANET_MAX_PULL = THRUST * 0.55;
+export const PLANET_COMBINED_MAX_PULL = THRUST * 0.7;
 export const STAR_RADIUS_MIN = 50;
 export const STAR_RADIUS_MAX = 100;
 const colors = [0x6fe0cb, 0xc19df5, 0xe6ad78, 0x78b8f2];
@@ -77,16 +79,32 @@ export function createRun(random = Math.random) {
 }
 export function gravity(ship, bodies) {
   let x = 0,
-    y = 0;
+    y = 0,
+    planetX = 0,
+    planetY = 0;
   for (const b of bodies) {
     const dx = b.x - ship.x,
       dy = b.y - ship.y,
-      d2 = Math.max(dx * dx + dy * dy, 16),
-      f = b.mu / (d2 * Math.sqrt(d2));
+      d2 = Math.max(dx * dx + dy * dy, 16);
+    if (b.orbit) {
+      // Planets have broad, soft fields measured from their surface. Larger planets
+      // reach farther, but close passes never overpower the ship's engine.
+      const distance = Math.sqrt(d2),
+        altitude = Math.max(0, distance - b.r),
+        reach = 60 + b.r * 3,
+        pull = Math.min(PLANET_MAX_PULL, b.mu / b.r ** 2) / (1 + (altitude / reach) ** 2);
+      planetX += (dx / distance) * pull;
+      planetY += (dy / distance) * pull;
+      continue;
+    }
+    const f = b.mu / (d2 * Math.sqrt(d2));
     x += dx * f;
     y += dy * f;
   }
-  return {x, y};
+  // Cap only planetary attraction: overlapping fields still leave thrust headroom.
+  // Stellar gravity is added unchanged and is never included in this cap.
+  const scale = Math.min(1, PLANET_COMBINED_MAX_PULL / (Math.hypot(planetX, planetY) || 1));
+  return {x: x + planetX * scale, y: y + planetY * scale};
 }
 export function sweptHit(a, b, r) {
   const dx = b.x - a.x,

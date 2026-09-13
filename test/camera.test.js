@@ -4,7 +4,7 @@ import {frame, BASE_EXTENT} from '../src/camera.js';
 const near = (a, b, tolerance = 1e-6) => assert.ok(Math.abs(a - b) < tolerance, `${a} !== ${b}`);
 const BOUND = 960;
 
-test('desktop framing is unchanged in landscape and portrait windows', () => {
+test('explicit overview zoom frames landscape and portrait windows', () => {
   const wide = frame({
     shipX: 0,
     shipY: 0,
@@ -30,6 +30,15 @@ test('desktop framing is unchanged in landscape and portrait windows', () => {
   });
   near(tall.halfH, BASE_EXTENT / (600 / 900));
   near(tall.halfW, BASE_EXTENT);
+});
+
+test('default desktop camera zooms in and tracks ship movement on both axes', () => {
+  const options = {width: 1600, height: 900, bound: BOUND};
+  const start = frame({...options, shipX: 0, shipY: 0});
+  const moved = frame({...options, shipX: 100, shipY: -200});
+  near(start.halfH, BASE_EXTENT / 2.2);
+  near(moved.cx - start.cx, 100);
+  near(moved.cy - start.cy, -200);
 });
 
 test('zoom shrinks both half extents proportionally', () => {

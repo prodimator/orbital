@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import {LIMIT} from './physics.js';
-import {frame} from './camera.js';
+import {frame, DEFAULT_ZOOM} from './camera.js';
 export function createView(container) {
   const renderer = new THREE.WebGLRenderer({antialias: true});
   renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
@@ -140,7 +140,7 @@ export function createView(container) {
       }
     }
   }
-  let zoom = 1,
+  let zoom = DEFAULT_ZOOM,
     hudPx = 0,
     focusX = 0,
     focusY = 0,
